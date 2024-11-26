@@ -1,64 +1,42 @@
-import { useState, useEffect, createContext, useContext } from 'react';
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User,
-  updateProfile as firebaseUpdateProfile
-} from 'firebase/auth';
-import { auth } from '../firebase';
+import { useEffect, useState } from 'react';
+import { getAuth, onAuthStateChanged, User, signOut as firebaseSignOut, 
+  signInWithPopup, GoogleAuthProvider, updateProfile as firebaseUpdateProfile } from 'firebase/auth';
 
-interface AuthContextType {
-  user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
-  updateProfile: (profileData: { displayName?: string; photoURL?: string }) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+  const signOut = async () => {
+    const auth = getAuth();
+    await firebaseSignOut(auth);
   };
 
   const signInWithGoogle = async () => {
+    const auth = getAuth();
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
   };
 
-  const signOut = async () => {
-    await firebaseSignOut(auth);
+  const updateProfile = async (displayName: string, photoURL?: string) => {
+    if (!user) return;
+    await firebaseUpdateProfile(user, { displayName, photoURL });
   };
 
-  const updateProfile = async (profileData: { displayName?: string; photoURL?: string }) => {
-    if (!auth.currentUser) throw new Error('No user logged in');
-    await firebaseUpdateProfile(auth.currentUser, profileData);
+  return { 
+    user, 
+    loading,
+    signOut,
+    signInWithGoogle,
+    updateProfile
   };
-
-  return (
-    <AuthContext.Provider value={{ user, signIn, signInWithGoogle, signOut, updateProfile }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+}

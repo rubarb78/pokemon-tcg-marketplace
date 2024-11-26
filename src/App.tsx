@@ -20,7 +20,10 @@ import theme from './theme';
 
 function App() {
   return (
-    <PayPalScriptProvider options={{ "client-id": process.env.VITE_PAYPAL_CLIENT_ID || "" }}>
+    <PayPalScriptProvider options={{ 
+      clientId: process.env.VITE_PAYPAL_CLIENT_ID || "",
+      intent: "CAPTURE"
+    }}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
