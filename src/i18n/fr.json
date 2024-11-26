@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Marché Pokémon TCG",
+    "description": "Tableau de bord du marché des cartes Pokémon"
+  },
+  "cards": {
+    "performance": {
+      "title": "Performance",
+      "metrics": "Métriques de performance"
+    },
+    "errors": {
+      "title": "Erreurs",
+      "distribution": "Distribution des erreurs"
+    },
+    "transactions": {
+      "title": "Transactions",
+      "trends": "Tendances des transactions"
+    },
+    "business": {
+      "title": "Métriques commerciales",
+      "revenue": "Revenus",
+      "growth": "Croissance"
+    },
+    "trading": {
+      "title": "Métriques de trading",
+      "volume": "Volume",
+      "price": "Prix"
+    }
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "noData": "Aucune donnée disponible"
+  }
+}

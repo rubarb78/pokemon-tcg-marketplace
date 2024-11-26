@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fonction pour vérifier si l'utilisateur est connecté
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur accède à ses propres données
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Fonction pour valider le format d'une carte
+    function isValidCard(card) {
+      return card.size() <= 1000000 // Taille max 1MB
+        && card.keys().hasAll(['id', 'name', 'price', 'condition', 'sellerId'])
+        && card.price is number
+        && card.price >= 0;
+    }
+
+    // Collection utilisateurs
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+      
+      // Sous-collection favoris
+      match /favorites/{cardId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Sous-collection collection de cartes
+      match /collection/{cardId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Collection cartes en vente
+    match /marketplace/{cardId} {
+      allow read: if true; // Lecture publique
+      allow create: if isAuthenticated() 
+        && isValidCard(request.resource.data)
+        && request.resource.data.sellerId == request.auth.uid;
+      allow update: if isAuthenticated()
+        && isValidCard(request.resource.data)
+        && resource.data.sellerId == request.auth.uid;
+      allow delete: if isAuthenticated()
+        && resource.data.sellerId == request.auth.uid;
+    }
+    
+    // Collection commandes
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() 
+        && (resource.data.buyerId == request.auth.uid 
+            || resource.data.sellerId == request.auth.uid);
+      allow create: if isAuthenticated()
+        && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAuthenticated()
+        && (resource.data.buyerId == request.auth.uid 
+            || resource.data.sellerId == request.auth.uid)
+        && request.resource.data.buyerId == resource.data.buyerId
+        && request.resource.data.sellerId == resource.data.sellerId;
+    }
+    
+    // Collection transactions
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated()
+        && (resource.data.buyerId == request.auth.uid 
+            || resource.data.sellerId == request.auth.uid);
+      allow create: if isAuthenticated()
+        && request.resource.data.buyerId == request.auth.uid;
+      allow update: if false; // Pas de modification des transactions
+      allow delete: if false; // Pas de suppression des transactions
+    }
+  }
+}

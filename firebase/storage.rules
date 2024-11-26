@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Fonction pour vérifier si l'utilisateur est connecté
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction pour vérifier la taille et le type du fichier
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024 // 5MB max
+          && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Images des cartes Pokémon
+    match /cards/{userId}/{cardId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                  && request.auth.uid == userId
+                  && isValidImage();
+    }
+    
+    // Images de profil des utilisateurs
+    match /profiles/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                  && request.auth.uid == userId
+                  && isValidImage();
+    }
+  }
+}
