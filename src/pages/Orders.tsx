@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import {
   Container,
   Typography,
@@ -14,33 +14,20 @@ import {
   IconButton,
   Collapse,
   CircularProgress,
+  Alert,
+  TablePagination
 } from '@mui/material'
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '../firebase'
+import { useOrder } from '../hooks/useOrder'
+import { Order } from '../services/OrderService'
 
-interface Order {
-  id: string
-  date: Date
-  total: number
-  status: 'pending' | 'completed' | 'cancelled'
-  items: {
-    card: {
-      id: string
-      name: string
-      price: number
-    }
-    quantity: number
-  }[]
-}
-
-const OrderRow = ({ order }: { order: Order }) => {
-  const [open, setOpen] = useState(false)
+const OrderRow: React.FC<{ order: Order }> = ({ order }) => {
+  const [open, setOpen] = React.useState(false)
 
   return (
     <>
-      <TableRow>
+      <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
         <TableCell>
           <IconButton size="small" onClick={() => setOpen(!open)}>
             {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
@@ -61,6 +48,7 @@ const OrderRow = ({ order }: { order: Order }) => {
             }
           />
         </TableCell>
+        <TableCell>{order.paymentMethod}</TableCell>
       </TableRow>
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
@@ -82,15 +70,29 @@ const OrderRow = ({ order }: { order: Order }) => {
                   {order.items.map((item) => (
                     <TableRow key={item.card.id}>
                       <TableCell>{item.card.name}</TableCell>
-                      <TableCell>{item.card.price.toFixed(2)}€</TableCell>
+                      <TableCell>{item.card.cardmarket.prices.averageSellPrice.toFixed(2)}€</TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell>
-                        {(item.card.price * item.quantity).toFixed(2)}€
+                        {(item.card.cardmarket.prices.averageSellPrice * item.quantity).toFixed(2)}€
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {order.shippingAddress && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Adresse de livraison
+                  </Typography>
+                  <Typography variant="body2">
+                    {order.shippingAddress.street}
+                    <br />
+                    {order.shippingAddress.zipCode} {order.shippingAddress.city}
+                    <br />
+                    {order.shippingAddress.state}, {order.shippingAddress.country}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Collapse>
         </TableCell>
@@ -99,86 +101,102 @@ const OrderRow = ({ order }: { order: Order }) => {
   )
 }
 
-const Orders = () => {
+const Orders: React.FC = () => {
   const { user } = useAuth()
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
+  const { orders, loading, error, hasMore, fetchOrders } = useOrder()
+  const [page, setPage] = React.useState(0)
+  const [rowsPerPage, setRowsPerPage] = React.useState(10)
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!user) return
-      try {
-        const ordersRef = collection(db, 'orders')
-        const q = query(
-          ordersRef,
-          where('userId', '==', user.uid),
-          orderBy('date', 'desc')
-        )
-        const querySnapshot = await getDocs(q)
-        const ordersData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Order[]
-        setOrders(ordersData)
-      } catch (error) {
-        console.error('Error fetching orders:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (user) {
+      fetchOrders(true)
     }
+  }, [user, fetchOrders])
 
-    fetchOrders()
-  }, [user])
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage)
+    if (newPage * rowsPerPage >= orders.length && hasMore) {
+      fetchOrders()
+    }
+  }
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10))
+    setPage(0)
+  }
 
   if (!user) {
     return (
       <Container>
-        <Typography variant="h5" align="center" sx={{ py: 8 }}>
+        <Alert severity="warning">
           Veuillez vous connecter pour voir vos commandes
-        </Typography>
+        </Alert>
       </Container>
     )
   }
 
-  if (loading) {
+  if (error) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
+      <Container>
+        <Alert severity="error">{error}</Alert>
+      </Container>
     )
   }
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Mes Commandes
-        </Typography>
-        {orders.length === 0 ? (
-          <Typography variant="h6" align="center" sx={{ py: 4 }}>
-            Vous n'avez pas encore de commandes
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} sx={{ mt: 4 }}>
+    <Container>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Mes commandes
+      </Typography>
+      
+      {loading && orders.length === 0 ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      ) : orders.length === 0 ? (
+        <Alert severity="info">Vous n'avez pas encore de commandes</Alert>
+      ) : (
+        <>
+          <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell />
-                  <TableCell>Numéro de commande</TableCell>
+                  <TableCell>Numéro</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Total</TableCell>
                   <TableCell>Statut</TableCell>
+                  <TableCell>Paiement</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {orders.map((order) => (
-                  <OrderRow key={order.id} order={order} />
-                ))}
+                {orders
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((order) => (
+                    <OrderRow key={order.id} order={order} />
+                  ))}
               </TableBody>
             </Table>
           </TableContainer>
-        )}
-      </Box>
+          
+          <TablePagination
+            component="div"
+            count={-1}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25]}
+            labelDisplayedRows={({ from, to }) => `${from}-${to}`}
+          />
+          
+          {loading && (
+            <Box display="flex" justifyContent="center" my={2}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+        </>
+      )}
     </Container>
   )
 }

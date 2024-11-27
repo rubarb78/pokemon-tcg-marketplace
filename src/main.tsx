@@ -4,10 +4,24 @@ import App from './App'
 import { AuthProvider } from './hooks/AuthProvider'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+
+console.log('Initializing app...');
+console.log('Root element:', rootElement);
+
+if (!rootElement) {
+  console.error('Root element not found!');
+  throw new Error('Failed to find the root element');
+}
+
+const root = ReactDOM.createRoot(rootElement);
+console.log('Root created successfully');
+
+root.render(
   <React.StrictMode>
     <AuthProvider>
       <App />
     </AuthProvider>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);
+console.log('App rendered');

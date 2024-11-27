@@ -9,11 +9,11 @@ export interface PokemonCard {
     small: string;
     large: string;
   };
-  cardmarket: {
-    prices: {
-      averageSellPrice: number;
-      lowPrice: number;
-      trendPrice: number;
+  cardmarket?: {
+    prices?: {
+      averageSellPrice?: number;
+      lowPrice?: number;
+      trendPrice?: number;
     };
   };
   set: {
@@ -28,6 +28,11 @@ class PokemonTCGService {
 
   constructor() {
     this.apiKey = import.meta.env.VITE_POKEMON_TCG_API_KEY || '';
+    if (!this.apiKey) {
+      console.error('Pokemon TCG API Key is missing!');
+    } else {
+      console.log('Pokemon TCG API Key is configured');
+    }
   }
 
   private getHeaders() {
@@ -36,23 +41,38 @@ class PokemonTCGService {
     };
   }
 
-  async searchCards(query: string, page = 1, pageSize = 20): Promise<{ data: PokemonCard[], totalCount: number }> {
+  async searchCards(query: string = '*', page = 1, pageSize = 20): Promise<{ data: PokemonCard[], totalCount: number }> {
     try {
+      console.log('Searching cards with query:', query);
+      
       const response = await axios.get(`${API_URL}/cards`, {
         headers: this.getHeaders(),
         params: {
-          q: query,
+          q: query === '*' ? 'supertype:Pokémon' : `supertype:Pokémon name:*${query}*`,
           page,
           pageSize,
+          orderBy: 'name',
         },
       });
+
+      console.log('API Response:', {
+        count: response.data.count,
+        totalCount: response.data.totalCount,
+        pageSize: response.data.pageSize,
+        page: response.data.page,
+      });
+
       return {
         data: response.data.data,
-        totalCount: response.data.totalCount,
+        totalCount: response.data.totalCount || 0,
       };
-    } catch (error) {
-      console.error('Error searching cards:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('Error fetching cards:', error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.error || 
+        error.message || 
+        'Erreur lors de la recherche des cartes'
+      );
     }
   }
 
@@ -62,9 +82,13 @@ class PokemonTCGService {
         headers: this.getHeaders(),
       });
       return response.data.data;
-    } catch (error) {
-      console.error('Error getting card:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('Error fetching card:', error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.error || 
+        error.message || 
+        'Erreur lors de la récupération de la carte'
+      );
     }
   }
 }

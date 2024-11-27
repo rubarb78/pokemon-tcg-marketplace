@@ -13,6 +13,7 @@ import {
 import { Delete, Add, Remove } from '@mui/icons-material'
 import useCart from '../hooks/useCart'
 import { loadStripe } from '@stripe/stripe-js'
+import PayPalButton from '../components/PayPalButton'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
 
@@ -37,6 +38,15 @@ const Cart = () => {
       sessionId: session.id,
     })
   }
+
+  const handlePayPalSuccess = (details: any) => {
+    console.log('Transaction completed by ' + details.payer.name.given_name);
+    clearCart();
+  };
+
+  const handlePayPalError = (error: any) => {
+    console.error('PayPal error:', error);
+  };
 
   if (items.length === 0) {
     return (
@@ -108,14 +118,21 @@ const Cart = () => {
                     Total: {total().toFixed(2)}€
                   </Typography>
                 </Box>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  onClick={handleCheckout}
-                >
-                  Payer
-                </Button>
+                <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleCheckout}
+                    fullWidth
+                  >
+                    Payer avec Stripe ({total().toFixed(2)} €)
+                  </Button>
+                  <PayPalButton
+                    amount={total()}
+                    onSuccess={handlePayPalSuccess}
+                    onError={handlePayPalError}
+                  />
+                </Box>
               </CardContent>
             </Card>
           </Grid>

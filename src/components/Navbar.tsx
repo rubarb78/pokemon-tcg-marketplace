@@ -1,10 +1,11 @@
 import { AppBar, Toolbar, Button, Typography, Box, IconButton, Badge, Menu, MenuItem, Avatar } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import { ShoppingCart, Favorite, Search, Person } from '@mui/icons-material'
+import { ShoppingCart, Favorite, Search, Person, Login, PersonAdd } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
 import useCart from '../hooks/useCart'
 import { useFavorites } from '../hooks/useFavorites'
 import { useState } from 'react'
+import '../styles/Title3D.css'
 
 const Navbar = () => {
   const { user, signOut } = useAuth()
@@ -20,46 +21,75 @@ const Navbar = () => {
     setAnchorEl(null)
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      handleClose();
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
+  };
+
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography
-          variant="h6"
-          component={RouterLink}
-          to="/"
-          sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}
-        >
-          Pokemon TCG Marketplace
-        </Typography>
+    <AppBar 
+      position="static" 
+      sx={{ 
+        background: 'linear-gradient(45deg, #2a75bb 30%, #3c5aa6 90%)',
+        boxShadow: '0 8px 16px rgba(0,0,0,0.3)'
+      }}
+    >
+      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <RouterLink 
+            to="/" 
+            className="title-3d"
+            style={{ textDecoration: 'none', color: 'white' }}
+          >
+            Pokemon TCG
+          </RouterLink>
+          <Button 
+            color="inherit" 
+            component={RouterLink} 
+            to="/marketplace"
+            sx={{ display: { xs: 'none', sm: 'block' } }}
+          >
+            Marketplace
+          </Button>
+          {user && (
+            <Button 
+              color="inherit" 
+              component={RouterLink} 
+              to="/collection"
+              sx={{ display: { xs: 'none', sm: 'block' } }}
+            >
+              Ma Collection
+            </Button>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton color="inherit" component={RouterLink} to="/search">
             <Search />
           </IconButton>
-          <IconButton color="inherit" component={RouterLink} to="/cart">
-            <Badge badgeContent={items.length} color="error">
-              <ShoppingCart />
-            </Badge>
-          </IconButton>
-          <IconButton color="inherit" component={RouterLink} to="/favorites">
-            <Badge badgeContent={favorites.length} color="error">
-              <Favorite />
-            </Badge>
-          </IconButton>
-          <Button color="inherit" component={RouterLink} to="/marketplace">
-            Marketplace
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/blog">
-            Blog
-          </Button>
-          {user ? (
+          
+          {user && (
             <>
+              <IconButton color="inherit" component={RouterLink} to="/cart">
+                <Badge badgeContent={items.length} color="error">
+                  <ShoppingCart />
+                </Badge>
+              </IconButton>
+              <IconButton color="inherit" component={RouterLink} to="/favorites">
+                <Badge badgeContent={favorites.length} color="error">
+                  <Favorite />
+                </Badge>
+              </IconButton>
               <IconButton
                 onClick={handleMenu}
                 color="inherit"
-                sx={{ ml: 1 }}
               >
                 {user.photoURL ? (
-                  <Avatar src={user.photoURL} alt={user.displayName || ''} />
+                  <Avatar src={user.photoURL} sx={{ width: 32, height: 32 }} />
                 ) : (
                   <Person />
                 )}
@@ -70,23 +100,34 @@ const Navbar = () => {
                 onClose={handleClose}
               >
                 <MenuItem component={RouterLink} to="/profile" onClick={handleClose}>
-                  Mon Profil
+                  Profil
                 </MenuItem>
-                <MenuItem component={RouterLink} to="/collection" onClick={handleClose}>
-                  Ma Collection
-                </MenuItem>
-                <MenuItem component={RouterLink} to="/orders" onClick={handleClose}>
-                  Mes Commandes
-                </MenuItem>
-                <MenuItem onClick={() => { handleClose(); signOut(); }}>
-                  Déconnexion
+                <MenuItem onClick={handleSignOut}>
+                  Se déconnecter
                 </MenuItem>
               </Menu>
             </>
-          ) : (
-            <Button color="inherit" component={RouterLink} to="/login">
-              Connexion
-            </Button>
+          )}
+          
+          {!user && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                color="inherit"
+                component={RouterLink}
+                to="/login"
+                startIcon={<Login />}
+              >
+                Connexion
+              </Button>
+              <Button
+                color="inherit"
+                component={RouterLink}
+                to="/signup"
+                startIcon={<PersonAdd />}
+              >
+                Inscription
+              </Button>
+            </Box>
           )}
         </Box>
       </Toolbar>

@@ -13,8 +13,15 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { PokemonCard } from '../services/PokemonTCGService';
@@ -23,17 +30,26 @@ interface CollectionCard extends PokemonCard {
   docId: string;
   status: 'keep' | 'sell' | 'trade';
   price?: number;
+  quantity: number;
 }
 
 const Collection = () => {
   const [cards, setCards] = useState<CollectionCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<CollectionCard | null>(null);
   const [price, setPrice] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+  const [status, setStatus] = useState<'keep' | 'sell' | 'trade'>('keep');
+  const [quantity, setQuantity] = useState<string>('1');
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
       loadCollection();
+    } else {
+      setCards([]);
+      setLoading(false);
     }
   }, [user]);
 
@@ -41,6 +57,8 @@ const Collection = () => {
     if (!user) return;
 
     try {
+      setLoading(true);
+      setError(null);
       const q = query(collection(db, 'collection'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const cardsData = querySnapshot.docs.map((doc) => ({
@@ -49,106 +67,183 @@ const Collection = () => {
       }));
       setCards(cardsData);
     } catch (error) {
-      console.error('Error loading collection:', error);
+      console.error('Erreur lors du chargement de la collection:', error);
+      setError('Impossible de charger votre collection. Veuillez réessayer plus tard.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleStatusChange = async (card: CollectionCard, newStatus: 'keep' | 'sell' | 'trade') => {
+  const handleUpdateCard = async () => {
+    if (!selectedCard || !user) return;
+
+    try {
+      const cardRef = doc(db, 'collection', selectedCard.docId);
+      await updateDoc(cardRef, {
+        status,
+        price: status === 'sell' ? parseFloat(price) : null,
+        quantity: parseInt(quantity),
+      });
+
+      setNotification('Carte mise à jour avec succès !');
+      loadCollection();
+      setSelectedCard(null);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la carte:', error);
+      setError('Impossible de mettre à jour la carte. Veuillez réessayer.');
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
     if (!user) return;
 
     try {
-      await addDoc(collection(db, 'collection'), {
-        ...card,
-        userId: user.uid,
-        status: newStatus,
-        price: newStatus === 'sell' ? parseFloat(price) : undefined,
-      });
-      
-      if (card.docId) {
-        await deleteDoc(doc(db, 'collection', card.docId));
-      }
-
+      await deleteDoc(doc(db, 'collection', cardId));
+      setNotification('Carte supprimée avec succès !');
       loadCollection();
-      setSelectedCard(null);
-      setPrice('');
     } catch (error) {
-      console.error('Error updating card status:', error);
+      console.error('Erreur lors de la suppression de la carte:', error);
+      setError('Impossible de supprimer la carte. Veuillez réessayer.');
     }
   };
 
-  const handleCardClick = (card: CollectionCard) => {
-    setSelectedCard(card);
-    setPrice(card.price?.toString() || '');
-  };
-
-  const handleCloseDialog = () => {
-    setSelectedCard(null);
-    setPrice('');
-  };
+  if (!user) {
+    return (
+      <Container maxWidth="lg">
+        <Box sx={{ py: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom>
+            Connectez-vous pour voir votre collection
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Ma Collection
-      </Typography>
+    <Container maxWidth="lg">
+      <Box sx={{ py: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Ma Collection
+        </Typography>
 
-      <Grid container spacing={3}>
-        {cards.map((card) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={card.id}>
-            <Card onClick={() => handleCardClick(card)} sx={{ cursor: 'pointer' }}>
-              <CardMedia
-                component="img"
-                image={card.images.small}
-                alt={card.name}
-                sx={{ objectFit: 'contain', pt: 2 }}
-              />
-              <CardContent>
-                <Typography gutterBottom variant="h6" component="div">
-                  {card.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Set: {card.set.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Status: {card.status}
-                </Typography>
-                {card.status === 'sell' && card.price && (
-                  <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                    {card.price.toFixed(2)} €
-                  </Typography>
-                )}
-              </CardContent>
-            </Card>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : cards.length === 0 ? (
+          <Typography variant="body1" sx={{ textAlign: 'center', py: 4 }}>
+            Votre collection est vide. Ajoutez des cartes depuis le Marketplace !
+          </Typography>
+        ) : (
+          <Grid container spacing={3}>
+            {cards.map((card) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={card.docId}>
+                <Card>
+                  <CardMedia
+                    component="img"
+                    image={card.images.small}
+                    alt={card.name}
+                    sx={{ objectFit: 'contain', cursor: 'pointer' }}
+                    onClick={() => setSelectedCard(card)}
+                  />
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {card.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Status: {card.status}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Quantité: {card.quantity}
+                    </Typography>
+                    {card.status === 'sell' && card.price && (
+                      <Typography variant="body2" color="text.secondary">
+                        Prix: {card.price}€
+                      </Typography>
+                    )}
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setSelectedCard(card)}
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteCard(card.docId)}
+                        sx={{ ml: 1 }}
+                      >
+                        Supprimer
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+        )}
+      </Box>
 
-      <Dialog open={!!selectedCard} onClose={handleCloseDialog}>
-        <DialogTitle>{selectedCard?.name}</DialogTitle>
+      <Dialog open={!!selectedCard} onClose={() => setSelectedCard(null)}>
+        <DialogTitle>Modifier la carte</DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body1" gutterBottom>
-              Choisissez le status de cette carte :
-            </Typography>
-            {selectedCard?.status === 'sell' && (
+          <Box sx={{ pt: 2 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={status}
+                label="Status"
+                onChange={(e) => setStatus(e.target.value as 'keep' | 'sell' | 'trade')}
+              >
+                <MenuItem value="keep">Garder</MenuItem>
+                <MenuItem value="sell">Vendre</MenuItem>
+                <MenuItem value="trade">Échanger</MenuItem>
+              </Select>
+            </FormControl>
+
+            {status === 'sell' && (
               <TextField
-                fullWidth
-                label="Prix de vente (€)"
+                label="Prix (€)"
                 type="number"
+                fullWidth
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                sx={{ mt: 2 }}
+                sx={{ mb: 2 }}
               />
             )}
+
+            <TextField
+              label="Quantité"
+              type="number"
+              fullWidth
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              inputProps={{ min: 1 }}
+            />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => handleStatusChange(selectedCard!, 'keep')}>Garder</Button>
-          <Button onClick={() => handleStatusChange(selectedCard!, 'trade')}>Échanger</Button>
-          <Button onClick={() => handleStatusChange(selectedCard!, 'sell')}>Vendre</Button>
-          <Button onClick={handleCloseDialog}>Annuler</Button>
+          <Button onClick={() => setSelectedCard(null)}>Annuler</Button>
+          <Button onClick={handleUpdateCard} variant="contained">
+            Sauvegarder
+          </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={!!notification}
+        autoHideDuration={3000}
+        onClose={() => setNotification(null)}
+        message={notification}
+      />
     </Container>
   );
 };

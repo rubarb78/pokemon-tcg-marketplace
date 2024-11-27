@@ -1,6 +1,6 @@
 {
-  "short_name": "Pokémon TCG",
-  "name": "Marché Pokémon TCG",
+  "short_name": "Pokemon TCG",
+  "name": "Pokemon TCG Marketplace",
   "description": "Tableau de bord du marché des cartes Pokémon",
   "lang": "fr-FR",
   "icons": [
@@ -12,19 +12,17 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
+      "sizes": "192x192"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
+      "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#FF6B6B",
+  "theme_color": "#000000",
   "background_color": "#ffffff",
   "orientation": "portrait",
   "categories": ["trading", "cards", "pokemon"],
