@@ -9,28 +9,30 @@
     <link rel="apple-touch-icon" href="/pokemon-tcg-marketplace/logo192.png" />
     <link rel="manifest" href="/pokemon-tcg-marketplace/manifest.json" />
     <title>Pokémon TCG Marketplace</title>
-    <script type="module" crossorigin src="/pokemon-tcg-marketplace/assets/index-95e015ce.js"></script>
-    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/react-vendor-b94efdf2.js">
-    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/mui-vendor-8b453b2d.js">
-    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/payment-vendor-d15a446c.js">
-    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/firebase-vendor-d747949e.js">
-    <link rel="stylesheet" href="/pokemon-tcg-marketplace/assets/index-0e926eb3.css">
+    <script type="module" crossorigin src="/pokemon-tcg-marketplace/assets/index-6eb734a6.js"></script>
+    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/react-vendor-079e3fe2.js">
+    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/mui-vendor-cb54c386.js">
+    <link rel="modulepreload" crossorigin href="/pokemon-tcg-marketplace/assets/firebase-vendor-b7fa58b6.js">
+    <link rel="stylesheet" href="/pokemon-tcg-marketplace/assets/index-bd616c1d.css">
   </head>
   <body>
     <div id="root"></div>
     
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('SW registered:', registration);
-            })
-            .catch(error => {
-              console.log('SW registration failed:', error);
-            });
-        });
-      }
+      // Defer service worker registration until after the app loads
+      window.addEventListener('load', () => {
+        if ('serviceWorker' in navigator) {
+          setTimeout(() => {
+            navigator.serviceWorker.register('/service-worker.js')
+              .then(registration => {
+                console.log('SW registered:', registration);
+              })
+              .catch(error => {
+                console.log('SW registration failed:', error);
+              });
+          }, 1000);
+        }
+      });
     </script>
   </body>
 </html>

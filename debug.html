@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Page</title>
+    <script>
+        function checkEnvironmentVariables() {
+            const variables = [
+                'VITE_FIREBASE_API_KEY',
+                'VITE_FIREBASE_AUTH_DOMAIN',
+                'VITE_FIREBASE_PROJECT_ID',
+                'VITE_FIREBASE_STORAGE_BUCKET',
+                'VITE_FIREBASE_MESSAGING_SENDER_ID',
+                'VITE_FIREBASE_APP_ID',
+                'VITE_PAYPAL_CLIENT_ID',
+                'VITE_POKEMON_TCG_API_KEY',
+                'VITE_STRIPE_PUBLIC_KEY'
+            ];
+
+            const results = variables.map(varName => {
+                const value = import.meta.env[varName];
+                return `${varName}: ${value ? '✅' : '❌'}`;
+            });
+
+            document.getElementById('env-results').innerHTML = results.join('<br>');
+        }
+    </script>
+</head>
+<body>
+    <h1>Debug Information</h1>
+    <h2>Environment Variables:</h2>
+    <div id="env-results"></div>
+    <script>
+        window.onload = checkEnvironmentVariables;
+    </script>
+</body>
+</html>
