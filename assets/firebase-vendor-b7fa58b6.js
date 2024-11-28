@@ -3240,3 +3240,4 @@ ${this.customData.serverResponse}`:this.message=this._baseMessage}}var je;(funct
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */const ph="storage";function Nv(n=Fs(),e){n=se(n);const r=ui(n,ph).getImmediate({identifier:e}),i=nu("storage");return i&&lv(r,...i),r}function lv(n,e,t,r={}){cv(n,e,t,r)}function hv(n,{instanceIdentifier:e}){const t=n.getProvider("app").getImmediate(),r=n.getProvider("auth-internal"),i=n.getProvider("app-check-internal");return new uv(t,r,i,e,xt)}function dv(){Dt(new gt(ph,hv,"PUBLIC").setMultipleInstances(!0)),Me(Yc,Jc,""),Me(Yc,Jc,"esm2017")}dv();export{ut as G,yv as a,_v as b,fv as c,Av as d,wv as e,bv as f,vv as g,Vv as h,yf as i,Dv as j,Ty as k,kv as l,Sv as m,Cv as n,gv as o,Nv as p,Rv as q,pv as s,mv as u,Pv as w};
+//# sourceMappingURL=firebase-vendor-b7fa58b6.js.map
