@@ -76,6 +76,18 @@ class PokemonTCGService {
     }
   }
 
+  async getCard(id: string): Promise<PokemonCard> {
+    try {
+      const response = await axios.get(`${API_URL}/cards/${id}`, {
+        headers: this.getHeaders(),
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching card:', error);
+      throw error;
+    }
+  }
+
   async getCardById(id: string): Promise<PokemonCard> {
     try {
       const response = await axios.get(`${API_URL}/cards/${id}`, {

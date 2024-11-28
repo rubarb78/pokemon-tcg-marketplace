@@ -18,6 +18,8 @@ export default defineConfig({
     strictPort: true
   },
   build: {
+    outDir: 'dist',
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -1,89 +1,169 @@
-import { useState, useEffect } from 'react';
-import { Container, Paper, Typography, TextField, Button, Box, Avatar } from '@mui/material';
-import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useState, useEffect } from 'react';
+import {
+  Container,
+  Grid,
+  Typography,
+  Paper,
+  Button,
+  Box,
+  Tab,
+  Tabs,
+  Drawer,
+  IconButton,
+} from '@mui/material';
+import { Add, Edit, BarChart } from '@mui/icons-material';
+import { BlogPost } from '../types/blog';
+import { BlogModerationService } from '../services/BlogModerationService';
+import { BlogRecommendationService } from '../services/BlogRecommendationService';
+import { BlogAnalyticsService } from '../services/BlogAnalyticsService';
+import { ModerationDashboard } from '../components/blog/ModerationDashboard';
+import { BlogStats } from '../components/blog/BlogStats';
+import { DraftEditor } from '../components/blog/DraftEditor';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../contexts/NotificationContext';
 
-interface BlogPost {
-  id: string;
-  content: string;
-  author: string;
-  authorId: string;
-  timestamp: any;
-}
-
-const Blog = () => {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [newPost, setNewPost] = useState('');
+export const Blog: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification } = useNotification();
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [drafts, setDrafts] = useState<BlogPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<string | null>(null);
+  const [statsDrawerOpen, setStatsDrawerOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as BlogPost[];
-      setPosts(postsData);
-    });
+    if (user) {
+      loadDrafts();
+    }
+  }, [user]);
 
-    return () => unsubscribe();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newPost.trim()) return;
-
+  const loadDrafts = async () => {
+    if (!user) return;
+    
     try {
-      await addDoc(collection(db, 'posts'), {
-        content: newPost,
-        author: user.displayName || user.email,
-        authorId: user.uid,
-        timestamp: new Date()
-      });
-      setNewPost('');
+      const userDrafts = await BlogModerationService.getDrafts(user.uid);
+      setDrafts(userDrafts);
     } catch (error) {
-      console.error('Erreur lors de la publication:', error);
+      showNotification('Error loading drafts', 'error');
     }
   };
 
-  return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Blog de la communauté
-      </Typography>
-      
-      {user && (
-        <Paper sx={{ p: 2, mb: 4 }}>
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              placeholder="Partagez vos pensées..."
-              margin="normal"
-            />
-            <Button type="submit" variant="contained" sx={{ mt: 1 }}>
-              Publier
-            </Button>
-          </form>
-        </Paper>
-      )}
+  const handleNewPost = () => {
+    setSelectedPost(null);
+    setEditorOpen(true);
+  };
 
-      {posts.map((post) => (
-        <Paper key={post.id} sx={{ p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Avatar sx={{ mr: 2 }}>{post.author[0]}</Avatar>
-            <Typography variant="subtitle1">{post.author}</Typography>
+  const handleEditDraft = (postId: string) => {
+    setSelectedPost(postId);
+    setEditorOpen(true);
+  };
+
+  const handleSaveDraft = async (postId: string) => {
+    await loadDrafts();
+    setEditorOpen(false);
+    showNotification('Draft saved successfully', 'success');
+  };
+
+  const handleViewStats = (postId: string) => {
+    setSelectedPost(postId);
+    setStatsDrawerOpen(true);
+  };
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h4" gutterBottom>
+              Blog Management
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Add />}
+              onClick={handleNewPost}
+            >
+              New Post
+            </Button>
           </Box>
-          <Typography variant="body1">{post.content}</Typography>
-          <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
-            {post.timestamp?.toDate().toLocaleDateString()}
-          </Typography>
-        </Paper>
-      ))}
+        </Grid>
+
+        <Grid item xs={12}>
+          <Paper sx={{ width: '100%' }}>
+            <Tabs
+              value={selectedTab}
+              onChange={(e, newValue) => setSelectedTab(newValue)}
+              indicatorColor="primary"
+              textColor="primary"
+            >
+              <Tab label="My Drafts" />
+              <Tab label="Published Posts" />
+              {user?.role === 'moderator' && <Tab label="Moderation" />}
+            </Tabs>
+
+            {/* Drafts Tab */}
+            <Box hidden={selectedTab !== 0} sx={{ p: 3 }}>
+              <Grid container spacing={2}>
+                {drafts.map((draft) => (
+                  <Grid item xs={12} key={draft.id}>
+                    <Paper sx={{ p: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="h6">{draft.title}</Typography>
+                        <Box>
+                          <IconButton onClick={() => handleEditDraft(draft.id)}>
+                            <Edit />
+                          </IconButton>
+                          <IconButton onClick={() => handleViewStats(draft.id)}>
+                            <BarChart />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                      <Typography color="textSecondary" variant="body2">
+                        Last modified: {new Date(draft.lastModifiedAt).toLocaleDateString()}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            {/* Published Posts Tab */}
+            <Box hidden={selectedTab !== 1} sx={{ p: 3 }}>
+              {/* Published posts content */}
+            </Box>
+
+            {/* Moderation Tab */}
+            {user?.role === 'moderator' && (
+              <Box hidden={selectedTab !== 2} sx={{ p: 3 }}>
+                <ModerationDashboard />
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Draft Editor Drawer */}
+      <Drawer
+        anchor="right"
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        PaperProps={{ sx: { width: '80%' } }}
+      >
+        <DraftEditor
+          postId={selectedPost || undefined}
+          onSave={handleSaveDraft}
+        />
+      </Drawer>
+
+      {/* Stats Drawer */}
+      <Drawer
+        anchor="right"
+        open={statsDrawerOpen}
+        onClose={() => setStatsDrawerOpen(false)}
+        PaperProps={{ sx: { width: '60%' } }}
+      >
+        {selectedPost && <BlogStats postId={selectedPost} />}
+      </Drawer>
     </Container>
   );
 };

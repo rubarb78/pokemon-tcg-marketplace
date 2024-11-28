@@ -44,7 +44,14 @@ const Marketplace = () => {
       setLoading(true);
       setError(null);
       const { data, totalCount } = await pokemonTCGService.searchCards(searchQuery || '*', page);
-      const sortedCards = sortCardsByPrice(data, sortOrder);
+      // Filtrer pour obtenir les cartes rares
+      const rareCards = data.filter(card => 
+        card.rarity && ['Rare', 'Rare Holo', 'Rare Ultra', 'Rare Secret'].includes(card.rarity)
+      );
+      // Combiner les cartes rares avec les cartes normales
+      const allCards = [...data, ...rareCards];
+      const uniqueCards = Array.from(new Map(allCards.map(card => [card.id, card])).values());
+      const sortedCards = sortCardsByPrice(uniqueCards, sortOrder);
       setCards(sortedCards);
       setTotalPages(Math.ceil(totalCount / 20));
     } catch (error) {
@@ -96,15 +103,15 @@ const Marketplace = () => {
   }
 
   return (
-    <Container maxWidth="xl">
-      <div className="marketplace-header">
-        <Typography variant="h1" component="h1">
+    <Container maxWidth="xl" sx={{ mt: 10, mb: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
           Marketplace
         </Typography>
-        <Typography variant="subtitle1">
-          Découvrez notre collection de cartes Pokémon et trouvez les meilleures offres
+        <Typography variant="body1" color="text.secondary" paragraph>
+          Découvrez notre sélection de cartes Pokémon, incluant des cartes rares et communes.
         </Typography>
-      </div>
+      </Box>
 
       <Paper className="search-bar" elevation={0}>
         <form onSubmit={handleSearch}>
